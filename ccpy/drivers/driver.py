@@ -91,7 +91,10 @@ class Driver:
                         "amp_print_threshold": 0.09,
                         "davidson_max_subspace_size": 30,
                         "davidson_solver": "standard",
-                        "davidson_selection_method": "overlap"}
+                        "davidson_selection_method": "overlap",
+                        "relin_o_act_idx": None,
+                        "relin_v_act_idx": None,
+                        "relin_omega_fixed": None}
 
         # Disable DIIS for small problems to avoid inherent singularity
         if self.system.noccupied_alpha * self.system.nunoccupied_beta <= 4:
@@ -147,7 +150,7 @@ class Driver:
             self.operator_params["order"] = 1
             self.operator_params["number_particles"] = 1
             self.operator_params["number_holes"] = 1
-        elif method.lower() in ["cc2", "ccd", "ccsd", "ccsd_chol", "accd", "accsd", "eomcc2", "eomccsd", "eomccsd_chol",
+        elif method.lower() in ["cc2", "ccd", "ccsd", "ccsd_chol", "accd", "accsd", "eomcc2", "eomcc2-relin", "eomccsd", "eomccsd_chol",
                                 "left_ccsd", "left_ccsd_chol", "eccc2", "cc3", "eomcc3", "lrccsd"]:
             self.operator_params["order"] = 2
             self.operator_params["number_particles"] = 2
@@ -687,7 +690,7 @@ class Driver:
                                       self.options["amp_print_threshold"])
         print("   Multiroot EOMCC(P) calculation ended on", get_timestamp(), "\n")
 
-    def run_eomcc(self, method, state_index):
+    def run_eomcc(self, method, state_index, relin_cutoff=None, omega_fixed=None):
         """Performs the EOMCC calculation specified by the user in the input."""
         # check if requested CC calculation is implemented in modules
         if method.lower() not in ccpy.eomcc.MODULES:
@@ -700,6 +703,27 @@ class Driver:
         # If running EOM-CC3, use the nonlinear excited state DIIS solver
         if method.lower() == "eomcc3":
             self.options["davidson_solver"] = "diis"
+
+        # If running relinearized EOM-CC2, determine prerequisites
+        if method.lower() == "eomcc2-relin":
+            # Convert to au
+            print(f"Chosen relinearized cutoff in eV: {relin_cutoff*27.2114:.2f}")
+
+            # Determine active doubles configurations by simple orbital energies, assumes a restricted reference
+            self.options["relin_o_act_idx"] = np.where(np.diagonal(self.fock.a.vv[0, 0] - self.fock.a.oo) < relin_cutoff)[0][0]
+            self.options["relin_v_act_idx"] = np.where(np.diagonal(self.fock.a.vv - self.fock.a.oo[-1, -1]) < relin_cutoff)[0][-1]
+
+            total_configs = self.system.noccupied_alpha**2 * self.system.nunoccupied_alpha**2
+            active_configs = (
+                (self.system.noccupied_alpha-self.options["relin_o_act_idx"])**2 * self.options["relin_v_act_idx"]**2
+            )
+            print(f"Only {active_configs/total_configs*100:.2f}% of doubles configurations are considered.")
+
+            # Fix omega for Davidson 
+            if omega_fixed is None:
+                # Take the average of the guesses
+                omega_fixed = np.mean(self.guess_energy)
+            self.options["relin_omega_fixed"] = omega_fixed
 
         # Ensure that Hbar is set upon entry
         assert(self.flag_hbar)

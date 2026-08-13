@@ -130,6 +130,9 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
     dR.unflatten(dR.flatten() * 0.0)
     if t3_excitations or r3_excitations:
         sigma[0, :] = HR(dR, R, T, H, options["RHF_symmetry"], system, t3_excitations, r3_excitations)
+    elif options["relin_omega_fixed"] is not None:
+        sigma[0, :] = HR(dR, R, T, H, options["RHF_symmetry"], system,
+                         options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"])
     else:
         sigma[0, :] = HR(dR, R, T, H, options["RHF_symmetry"], system)
     if noffset == 1:
@@ -182,6 +185,9 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
         # update residual vector using diagonal preconditioning
         if t3_excitations or r3_excitations:
             R = update_r(R, omega, H, options["RHF_symmetry"], system, r3_excitations)
+        elif options["relin_omega_fixed"] is not None:
+            R = update_r(R, omega, H, options["RHF_symmetry"], system,
+                         options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"])
         else:
             R = update_r(R, omega, H, options["RHF_symmetry"], system)
         # orthogonalize residual against subspace vectors (would be nice to vectorize this)
@@ -198,6 +204,11 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
             B[curr_size, :] = q
             if t3_excitations or r3_excitations:
                 sigma[curr_size, :] = HR(dR, R, T, H, options["RHF_symmetry"], system, t3_excitations, r3_excitations)
+            elif options["relin_omega_fixed"] is not None:
+                sigma[curr_size, :] = HR(
+                    dR, R, T, H, options["RHF_symmetry"], system,
+                    options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"]
+                )
             else:
                 sigma[curr_size, :] = HR(dR, R, T, H, options["RHF_symmetry"], system)
         else:
@@ -209,6 +220,11 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
                 B[j, :] = R.flatten()
                 if t3_excitations or r3_excitations:
                     sigma[j, :] = HR(dR, R, T, H, options["RHF_symmetry"], system, t3_excitations, r3_excitations)
+                elif options["relin_omega_fixed"] is not None:
+                    sigma[j, :] = HR(
+                        dR, R, T, H, options["RHF_symmetry"], system,
+                        options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"]
+                    )
                 else:
                     sigma[j, :] = HR(dR, R, T, H, options["RHF_symmetry"], system)
             curr_size = restart_block.shape[1] - 1

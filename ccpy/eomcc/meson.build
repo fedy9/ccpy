@@ -16,6 +16,7 @@ python_sources = [
 'eaeom3_p.py',
 'eaeomccsdt.py',
 'eomcc2.py',
+'eomcc2-relin.py',
 'eomcc3.py',
 'eomcc3_intermediates.py',
 'eomccsd.py',
