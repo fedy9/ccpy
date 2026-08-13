@@ -1,5 +1,5 @@
 import numpy as np
-from ccpy.models.integrals import Integral
+# from ccpy.models.integrals import Integral
 
 def build_hbar_cc2(T, H0, RHF_symmetry, system, *args):
     """Calculate the one- and two-body components of the CC2 similarity-transformed
