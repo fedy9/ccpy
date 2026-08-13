@@ -7,6 +7,7 @@ python_sources = [
   'hbar_ccsdt1.py',
   'hbar_ccsdta.py',
   'hbar_ccsdt_p.py',
+  'hbar_cc2.py',
   'hbar_cc3.py',
   'hbar_cc4.py',
   'diagonal.py',
