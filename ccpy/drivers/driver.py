@@ -807,7 +807,7 @@ class Driver:
                                                                                                        B,
                                                                                                        self.R[istate], dR, self.vertical_excitation_energy[istate],
                                                                                                        self.T, self.hamiltonian, self.system, self.options,
-                                                                                                       fock=(self.fock if method.lower() == "eomcc2" else None))
+                                                                                                       fock=(self.fock if method.lower() in ["eomcc2", "eomcc2-relin"] else None))
                 # Keep the computed root in the starting guess space for subsequent roots
                 B_prev.append(self.R[istate].flatten() / np.linalg.norm(self.R[istate].flatten()))
                 # Compute r0 a posteriori

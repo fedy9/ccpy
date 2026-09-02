@@ -131,7 +131,7 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
     if t3_excitations or r3_excitations:
         sigma[0, :] = HR(dR, R, T, H, options["RHF_symmetry"], system, t3_excitations, r3_excitations)
     elif options["relin_omega_fixed"] is not None:
-        sigma[0, :] = HR(dR, R, T, H, options["RHF_symmetry"], system,
+        sigma[0, :] = HR(dR, R, T, H, fock, options["RHF_symmetry"], system,
                          options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"])
     elif fock is not None:
         sigma[0, :] = HR(dR, R, T, H, fock, options["RHF_symmetry"], system)
@@ -188,7 +188,7 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
         if t3_excitations or r3_excitations:
             R = update_r(R, omega, H, options["RHF_symmetry"], system, r3_excitations)
         elif options["relin_omega_fixed"] is not None:
-            R = update_r(R, omega, H, options["RHF_symmetry"], system,
+            R = update_r(R, omega, H, fock, options["RHF_symmetry"], system,
                          options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"])
         elif fock is not None:
             R = update_r(R, omega, H, fock, options["RHF_symmetry"], system)
@@ -210,7 +210,7 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
                 sigma[curr_size, :] = HR(dR, R, T, H, options["RHF_symmetry"], system, t3_excitations, r3_excitations)
             elif options["relin_omega_fixed"] is not None:
                 sigma[curr_size, :] = HR(
-                    dR, R, T, H, options["RHF_symmetry"], system,
+                    dR, R, T, H, fock, options["RHF_symmetry"], system,
                     options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"]
                 )
             elif fock is not None:
@@ -228,7 +228,7 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
                     sigma[j, :] = HR(dR, R, T, H, options["RHF_symmetry"], system, t3_excitations, r3_excitations)
                 elif options["relin_omega_fixed"] is not None:
                     sigma[j, :] = HR(
-                        dR, R, T, H, options["RHF_symmetry"], system,
+                        dR, R, T, H, fock, options["RHF_symmetry"], system,
                         options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"]
                     )
                 elif fock is not None:
