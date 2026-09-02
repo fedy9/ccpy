@@ -89,7 +89,7 @@ def eomcc_nonlinear_diis(HR, update_r, B0, R, dR, omega, T, H, X, fock, system, 
     print(f"   Total CPU time is {time.process_time() - t_cpu_root_start} seconds")
     return R, omega, is_converged
 
-def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_excitations=None, r3_excitations=None):
+def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_excitations=None, r3_excitations=None, fock=None):
     """
     Diagonalize the similarity-transformed CC Hamiltonian entering the
     EOMCC computations (e.g., of the EE, IP, EA, DEA, or DIP varieties)
@@ -133,6 +133,8 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
     elif options["relin_omega_fixed"] is not None:
         sigma[0, :] = HR(dR, R, T, H, options["RHF_symmetry"], system,
                          options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"])
+    elif fock is not None:
+        sigma[0, :] = HR(dR, R, T, H, fock, options["RHF_symmetry"], system)
     else:
         sigma[0, :] = HR(dR, R, T, H, options["RHF_symmetry"], system)
     if noffset == 1:
@@ -188,6 +190,8 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
         elif options["relin_omega_fixed"] is not None:
             R = update_r(R, omega, H, options["RHF_symmetry"], system,
                          options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"])
+        elif fock is not None:
+            R = update_r(R, omega, H, fock, options["RHF_symmetry"], system)
         else:
             R = update_r(R, omega, H, options["RHF_symmetry"], system)
         # orthogonalize residual against subspace vectors (would be nice to vectorize this)
@@ -209,6 +213,8 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
                     dR, R, T, H, options["RHF_symmetry"], system,
                     options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"]
                 )
+            elif fock is not None:
+                sigma[curr_size, :] = HR(dR, R, T, H, fock, options["RHF_symmetry"], system)
             else:
                 sigma[curr_size, :] = HR(dR, R, T, H, options["RHF_symmetry"], system)
         else:
@@ -225,6 +231,8 @@ def eomcc_davidson(HR, update_r, B0, R, dR, omega, T, H, system, options, t3_exc
                         dR, R, T, H, options["RHF_symmetry"], system,
                         options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"]
                     )
+                elif fock is not None:
+                    sigma[j, :] = HR(dR, R, T, H, fock, options["RHF_symmetry"], system)
                 else:
                     sigma[j, :] = HR(dR, R, T, H, options["RHF_symmetry"], system)
             curr_size = restart_block.shape[1] - 1

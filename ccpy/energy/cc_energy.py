@@ -64,9 +64,12 @@ def get_r0(R, H, omega):
     r0 = 0.0
     r0 += np.einsum("me,em->", H.a.ov, R.a, optimize=True)
     r0 += np.einsum("me,em->", H.b.ov, R.b, optimize=True)
-    r0 += 0.25 * np.einsum("mnef,efmn->", H.aa.oovv, R.aa, optimize=True)
-    r0 += np.einsum("mnef,efmn->", H.ab.oovv, R.ab, optimize=True)
-    r0 += 0.25 * np.einsum("mnef,efmn->", H.bb.oovv, R.bb, optimize=True)
+    # R2 (R.aa, R.ab, R.bb) is only implicit for methods like eomcc2_lin, where it is
+    # never stored on R; its contribution to r0 is then simply omitted.
+    if hasattr(R, "aa"):
+        r0 += 0.25 * np.einsum("mnef,efmn->", H.aa.oovv, R.aa, optimize=True)
+        r0 += np.einsum("mnef,efmn->", H.ab.oovv, R.ab, optimize=True)
+        r0 += 0.25 * np.einsum("mnef,efmn->", H.bb.oovv, R.bb, optimize=True)
 
     return r0 / omega
 
@@ -79,11 +82,16 @@ def get_rel(R, r0):
             np.einsum("ai,ai->", R.a, R.a, optimize=True)
             + np.einsum("ai,ai->", R.b, R.b, optimize=True)
     )
-    rel_2 = (
-            0.25 * np.einsum("abij,abij->", R.aa, R.aa, optimize=True)
-            + np.einsum("abij,abij->", R.ab, R.ab, optimize=True)
-            + 0.25 * np.einsum("abij,abij->", R.bb, R.bb, optimize=True)
-    )
+    # R2 is only implicit for methods like eomcc2_lin (no R.aa/R.ab/R.bb stored on R);
+    # its contribution to the REL metric is then simply omitted.
+    if hasattr(R, "aa"):
+        rel_2 = (
+                0.25 * np.einsum("abij,abij->", R.aa, R.aa, optimize=True)
+                + np.einsum("abij,abij->", R.ab, R.ab, optimize=True)
+                + 0.25 * np.einsum("abij,abij->", R.bb, R.bb, optimize=True)
+        )
+    else:
+        rel_2 = 0.0
     rel = (rel_1 + 2.0 * rel_2)/(rel_0 + rel_1 + rel_2)
     return rel
 

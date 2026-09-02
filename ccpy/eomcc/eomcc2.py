@@ -1,7 +1,7 @@
 import numpy as np
 from ccpy.lib.core import cc_loops2
 
-def update(R, omega, H, RHF_symmetry, system):
+def update(R, omega, H, fock, RHF_symmetry, system):
 
     R.a, R.b, R.aa, R.ab, R.bb = cc_loops2.update_r(
         R.a,
@@ -10,10 +10,10 @@ def update(R, omega, H, RHF_symmetry, system):
         R.ab,
         R.bb,
         omega,
-        H.a.oo,
-        H.a.vv,
-        H.b.oo,
-        H.b.vv,
+        fock.a.oo,
+        fock.a.vv,
+        fock.b.oo,
+        fock.b.vv,
         0.0,
     )
     if RHF_symmetry:
@@ -21,7 +21,7 @@ def update(R, omega, H, RHF_symmetry, system):
         R.bb = R.aa.copy()
     return R
 
-def HR(dR, R, T, H, flag_RHF, system):
+def HR(dR, R, T, H, fock, flag_RHF, system):
 
     # update R1
     dR.a = build_HR_1A(R, H)
@@ -30,12 +30,12 @@ def HR(dR, R, T, H, flag_RHF, system):
     else:
         dR.b = build_HR_1B(R, H)
     # update R2
-    dR.aa = build_HR_2A(R, T, H)
-    dR.ab = build_HR_2B(R, T, H)
+    dR.aa = build_HR_2A(R, T, H, fock)
+    dR.ab = build_HR_2B(R, T, H, fock)
     if flag_RHF:
         dR.bb = dR.aa.copy()
     else:
-        dR.bb = build_HR_2C(R, T, H)
+        dR.bb = build_HR_2C(R, T, H, fock)
     return dR.flatten()
 
 def build_HR_1A(R, H):
@@ -66,32 +66,34 @@ def build_HR_1B(R, H):
     X1B += np.einsum("me,aeim->ai", H.b.ov, R.bb, optimize=True)
     return X1B
 
-def build_HR_2A(R, T, H):
+def build_HR_2A(R, T, H, fock):
     # < ijab | [H(2)*(R1+R2)]_C | 0 >
-    X2A = -0.5 * np.einsum("mi,abmj->abij", H.a.oo, R.aa, optimize=True)  # A(ij)
-    X2A += 0.5 * np.einsum("ae,ebij->abij", H.a.vv, R.aa, optimize=True)  # A(ab)
+    # NOTE: the doubles-doubles self-coupling is diagonal by construction in CC2, i.e., it
+    # is given by the bare (undressed) Fock operator, not the T1/T2-dressed CC2 Hbar.
+    X2A = -0.5 * np.einsum("mi,abmj->abij", fock.a.oo, R.aa, optimize=True)  # A(ij)
+    X2A += 0.5 * np.einsum("ae,ebij->abij", fock.a.vv, R.aa, optimize=True)  # A(ab)
     X2A -= 0.5 * np.einsum("bmji,am->abij", H.aa.vooo, R.a, optimize=True)  # A(ab)
     X2A += 0.5 * np.einsum("baje,ei->abij", H.aa.vvov, R.a, optimize=True)  # A(ij)
     X2A -= np.transpose(X2A, (1, 0, 2, 3)) # antisymmetrize (ab)
     X2A -= np.transpose(X2A, (0, 1, 3, 2)) # antisymmetrize (ij)
     return X2A
 
-def build_HR_2B(R, T, H):
+def build_HR_2B(R, T, H, fock):
     
-    X2B = np.einsum("ae,ebij->abij", H.a.vv, R.ab, optimize=True)
-    X2B += np.einsum("be,aeij->abij", H.b.vv, R.ab, optimize=True)
-    X2B -= np.einsum("mi,abmj->abij", H.a.oo, R.ab, optimize=True)
-    X2B -= np.einsum("mj,abim->abij", H.b.oo, R.ab, optimize=True)
+    X2B = np.einsum("ae,ebij->abij", fock.a.vv, R.ab, optimize=True)
+    X2B += np.einsum("be,aeij->abij", fock.b.vv, R.ab, optimize=True)
+    X2B -= np.einsum("mi,abmj->abij", fock.a.oo, R.ab, optimize=True)
+    X2B -= np.einsum("mj,abim->abij", fock.b.oo, R.ab, optimize=True)
     X2B += np.einsum("abej,ei->abij", H.ab.vvvo, R.a, optimize=True)
     X2B += np.einsum("abie,ej->abij", H.ab.vvov, R.b, optimize=True)
     X2B -= np.einsum("mbij,am->abij", H.ab.ovoo, R.a, optimize=True)
     X2B -= np.einsum("amij,bm->abij", H.ab.vooo, R.b, optimize=True)
     return X2B
 
-def build_HR_2C(R, T, H):
+def build_HR_2C(R, T, H, fock):
 
-    X2C = -0.5 * np.einsum("mi,abmj->abij", H.b.oo, R.bb, optimize=True)  # A(ij)
-    X2C += 0.5 * np.einsum("ae,ebij->abij", H.b.vv, R.bb, optimize=True)  # A(ab)
+    X2C = -0.5 * np.einsum("mi,abmj->abij", fock.b.oo, R.bb, optimize=True)  # A(ij)
+    X2C += 0.5 * np.einsum("ae,ebij->abij", fock.b.vv, R.bb, optimize=True)  # A(ab)
     X2C -= 0.5 * np.einsum("bmji,am->abij", H.bb.vooo, R.b, optimize=True)  # A(ab)
     X2C += 0.5 * np.einsum("baje,ei->abij", H.bb.vvov, R.b, optimize=True)  # A(ij)
     X2C -= np.transpose(X2C, (1, 0, 2, 3)) # antisymmetrize (ab)

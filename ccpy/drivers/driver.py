@@ -146,7 +146,7 @@ class Driver:
         ----------
         method :
         """
-        if method.lower() in ["ccs"]:
+        if method.lower() in ["ccs", "eomcc2_nlin"]:
             self.operator_params["order"] = 1
             self.operator_params["number_particles"] = 1
             self.operator_params["number_holes"] = 1
@@ -700,8 +700,10 @@ class Driver:
         # Set operator parameters needed to build R
         self.set_operator_params(method)
         self.options["method"] = method.upper()
-        # If running EOM-CC3, use the nonlinear excited state DIIS solver
-        if method.lower() == "eomcc3":
+        # If running EOM-CC3 or the nonlinear EOM-CC2 (in which R2 is only implicit),
+        # use the nonlinear excited state DIIS solver, since the elimination of the highest
+        # excitation rank makes the eigenvalue problem nonlinear in omega
+        if method.lower() in ["eomcc3", "eomcc2_nlin"]:
             self.options["davidson_solver"] = "diis"
 
         # If running relinearized EOM-CC2, determine prerequisites
@@ -774,8 +776,8 @@ class Driver:
                                           self.options["amp_print_threshold"])
             print("   Multiroot EOMCC calculation ended on", get_timestamp(), "\n")
 
-        elif self.options["davidson_solver"] == "diis": # used for EOM-CC3 calculations ONLY!
-            assert method.lower() == "eomcc3"
+        elif self.options["davidson_solver"] == "diis": # used for EOM-CC3 and nonlinear EOM-CC2 calculations ONLY!
+            assert method.lower() in ["eomcc3", "eomcc2_nlin"]
             for j, istate in enumerate(state_index):
                 print("   EOMCC calculation for root %d started on" % istate, get_timestamp())
                 print("\n   Energy of initial guess = {:>10.10f}".format(self.vertical_excitation_energy[istate]))
@@ -804,7 +806,8 @@ class Driver:
                 self.R[istate], self.vertical_excitation_energy[istate], is_converged = eomcc_davidson(HR_function, update_function,
                                                                                                        B,
                                                                                                        self.R[istate], dR, self.vertical_excitation_energy[istate],
-                                                                                                       self.T, self.hamiltonian, self.system, self.options)
+                                                                                                       self.T, self.hamiltonian, self.system, self.options,
+                                                                                                       fock=(self.fock if method.lower() == "eomcc2" else None))
                 # Keep the computed root in the starting guess space for subsequent roots
                 B_prev.append(self.R[istate].flatten() / np.linalg.norm(self.R[istate].flatten()))
                 # Compute r0 a posteriori

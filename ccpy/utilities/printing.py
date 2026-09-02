@@ -206,20 +206,21 @@ def print_block_eomcc_iteration(
 def print_ee_amplitudes(R, system, order, thresh_print):
 
     # Zero out the non-unique R amplitudes related by permutational symmetry
-    for a in range(system.nunoccupied_alpha):
-        for b in range(a + 1, system.nunoccupied_alpha):
-            for i in range(system.noccupied_alpha):
-                for j in range(i + 1, system.noccupied_alpha):
-                    R.aa[b, a, j, i] = 0.0
-                    R.aa[a, b, j, i] = 0.0
-                    R.aa[b, a, i, j] = 0.0
-    for a in range(system.nunoccupied_beta):
-        for b in range(a + 1, system.nunoccupied_beta):
-            for i in range(system.noccupied_beta):
-                for j in range(i + 1, system.noccupied_beta):
-                    R.bb[b, a, j, i] = 0.0
-                    R.bb[a, b, j, i] = 0.0
-                    R.bb[b, a, i, j] = 0.0
+    if order >= 2:
+        for a in range(system.nunoccupied_alpha):
+            for b in range(a + 1, system.nunoccupied_alpha):
+                for i in range(system.noccupied_alpha):
+                    for j in range(i + 1, system.noccupied_alpha):
+                        R.aa[b, a, j, i] = 0.0
+                        R.aa[a, b, j, i] = 0.0
+                        R.aa[b, a, i, j] = 0.0
+        for a in range(system.nunoccupied_beta):
+            for b in range(a + 1, system.nunoccupied_beta):
+                for i in range(system.noccupied_beta):
+                    for j in range(i + 1, system.noccupied_beta):
+                        R.bb[b, a, j, i] = 0.0
+                        R.bb[a, b, j, i] = 0.0
+                        R.bb[b, a, i, j] = 0.0
 
     # Get reference symmetry for later use
     sym_ref = system.point_group_irrep_to_number[system.reference_symmetry]
@@ -258,87 +259,88 @@ def print_ee_amplitudes(R, system, order, thresh_print):
                 )
             )
             n += 1
-    for a in range(system.nunoccupied_alpha):
-        for b in range(a + 1, system.nunoccupied_alpha):
-            for i in range(system.noccupied_alpha):
-                for j in range(i + 1, system.noccupied_alpha):
-                    if abs(R.aa[a, b, i, j]) <= thresh_print: continue
-                    sym = sym_ref
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[i]]
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[j]]
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[a + system.noccupied_alpha]]
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[b + system.noccupied_alpha]]
-                    print(
-                        "      [{}]     {}A  {}A  ->  {}A  {}A  =   {:.6f}     [{}]".format(
-                            n,
-                            i + system.nfrozen + 1,
-                            j + system.nfrozen + 1,
-                            a + system.noccupied_alpha + system.nfrozen + 1,
-                            b + system.noccupied_alpha + system.nfrozen + 1,
-                            R.aa[a, b, i, j],
-                            system.point_group_number_to_irrep[sym],
+    if order >= 2:
+        for a in range(system.nunoccupied_alpha):
+            for b in range(a + 1, system.nunoccupied_alpha):
+                for i in range(system.noccupied_alpha):
+                    for j in range(i + 1, system.noccupied_alpha):
+                        if abs(R.aa[a, b, i, j]) <= thresh_print: continue
+                        sym = sym_ref
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[i]]
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[j]]
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[a + system.noccupied_alpha]]
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[b + system.noccupied_alpha]]
+                        print(
+                            "      [{}]     {}A  {}A  ->  {}A  {}A  =   {:.6f}     [{}]".format(
+                                n,
+                                i + system.nfrozen + 1,
+                                j + system.nfrozen + 1,
+                                a + system.noccupied_alpha + system.nfrozen + 1,
+                                b + system.noccupied_alpha + system.nfrozen + 1,
+                                R.aa[a, b, i, j],
+                                system.point_group_number_to_irrep[sym],
+                            )
                         )
-                    )
-                    n += 1
-    for a in range(system.nunoccupied_beta):
-        for b in range(a + 1, system.nunoccupied_beta):
-            for i in range(system.noccupied_beta):
-                for j in range(i + 1, system.noccupied_beta):
-                    if abs(R.bb[a, b, i, j]) <= thresh_print: continue
-                    sym = sym_ref
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[i]]
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[j]]
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[a + system.noccupied_beta]]
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[b + system.noccupied_beta]]
-                    print(
-                        "      [{}]     {}B  {}B  ->  {}B  {}B  =   {:.6f}     [{}]".format(
-                            n,
-                            i + system.nfrozen + 1,
-                            j + system.nfrozen + 1,
-                            a + system.noccupied_beta + system.nfrozen + 1,
-                            b + system.noccupied_beta + system.nfrozen + 1,
-                            R.bb[a, b, i, j],
-                            system.point_group_number_to_irrep[sym],
+                        n += 1
+        for a in range(system.nunoccupied_beta):
+            for b in range(a + 1, system.nunoccupied_beta):
+                for i in range(system.noccupied_beta):
+                    for j in range(i + 1, system.noccupied_beta):
+                        if abs(R.bb[a, b, i, j]) <= thresh_print: continue
+                        sym = sym_ref
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[i]]
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[j]]
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[a + system.noccupied_beta]]
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[b + system.noccupied_beta]]
+                        print(
+                            "      [{}]     {}B  {}B  ->  {}B  {}B  =   {:.6f}     [{}]".format(
+                                n,
+                                i + system.nfrozen + 1,
+                                j + system.nfrozen + 1,
+                                a + system.noccupied_beta + system.nfrozen + 1,
+                                b + system.noccupied_beta + system.nfrozen + 1,
+                                R.bb[a, b, i, j],
+                                system.point_group_number_to_irrep[sym],
+                            )
                         )
-                    )
-                    n += 1
-    for a in range(system.nunoccupied_alpha):
-        for b in range(system.nunoccupied_beta):
-            for i in range(system.noccupied_alpha):
-                for j in range(system.noccupied_beta):
-                    if abs(R.ab[a, b, i, j]) <= thresh_print: continue
-                    sym = sym_ref
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[i]]
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[j]]
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[a + system.noccupied_alpha]]
-                    sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[b + system.noccupied_beta]]
-                    print(
-                        "      [{}]     {}A  {}B  ->  {}A  {}B  =   {:.6f}     [{}]".format(
-                            n,
-                            i + system.nfrozen + 1,
-                            j + system.nfrozen + 1,
-                            a + system.noccupied_alpha + system.nfrozen + 1,
-                            b + system.noccupied_beta + system.nfrozen + 1,
-                            R.ab[a, b, i, j],
-                            system.point_group_number_to_irrep[sym],
+                        n += 1
+        for a in range(system.nunoccupied_alpha):
+            for b in range(system.nunoccupied_beta):
+                for i in range(system.noccupied_alpha):
+                    for j in range(system.noccupied_beta):
+                        if abs(R.ab[a, b, i, j]) <= thresh_print: continue
+                        sym = sym_ref
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[i]]
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[j]]
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[a + system.noccupied_alpha]]
+                        sym = sym ^ system.point_group_irrep_to_number[system.orbital_symmetries[b + system.noccupied_beta]]
+                        print(
+                            "      [{}]     {}A  {}B  ->  {}A  {}B  =   {:.6f}     [{}]".format(
+                                n,
+                                i + system.nfrozen + 1,
+                                j + system.nfrozen + 1,
+                                a + system.noccupied_alpha + system.nfrozen + 1,
+                                b + system.noccupied_beta + system.nfrozen + 1,
+                                R.ab[a, b, i, j],
+                                system.point_group_number_to_irrep[sym],
+                            )
                         )
-                    )
-                    n += 1
-    # Restore permutationally redundant amplitudes
-    for a in range(system.nunoccupied_alpha):
-        for b in range(a + 1, system.nunoccupied_alpha):
-            for i in range(system.noccupied_alpha):
-                for j in range(i + 1, system.noccupied_alpha):
-                    R.aa[b, a, j, i] = R.aa[a, b, i, j]
-                    R.aa[a, b, j, i] = -1.0 * R.aa[a, b, i, j]
-                    R.aa[b, a, i, j] = -1.0 * R.aa[a, b, i, j]
-    for a in range(system.nunoccupied_beta):
-        for b in range(a + 1, system.nunoccupied_beta):
-            for i in range(system.noccupied_beta):
-                for j in range(i + 1, system.noccupied_beta):
-                    R.bb[b, a, j, i] = R.bb[a, b, i, j]
-                    R.bb[a, b, j, i] = -1.0 * R.bb[a, b, i, j]
-                    R.bb[b, a, i, j] = -1.0 * R.bb[a, b, i, j]
+                        n += 1
+        # Restore permutationally redundant amplitudes
+        for a in range(system.nunoccupied_alpha):
+            for b in range(a + 1, system.nunoccupied_alpha):
+                for i in range(system.noccupied_alpha):
+                    for j in range(i + 1, system.noccupied_alpha):
+                        R.aa[b, a, j, i] = R.aa[a, b, i, j]
+                        R.aa[a, b, j, i] = -1.0 * R.aa[a, b, i, j]
+                        R.aa[b, a, i, j] = -1.0 * R.aa[a, b, i, j]
+        for a in range(system.nunoccupied_beta):
+            for b in range(a + 1, system.nunoccupied_beta):
+                for i in range(system.noccupied_beta):
+                    for j in range(i + 1, system.noccupied_beta):
+                        R.bb[b, a, j, i] = R.bb[a, b, i, j]
+                        R.bb[a, b, j, i] = -1.0 * R.bb[a, b, i, j]
+                        R.bb[b, a, i, j] = -1.0 * R.bb[a, b, i, j]
     return
 
 def print_ip_amplitudes(R, system, order, thresh_print):
