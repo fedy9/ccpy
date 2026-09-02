@@ -765,7 +765,8 @@ class Driver:
                                                                                          self.R, dR,
                                                                                          self.vertical_excitation_energy,
                                                                                          self.T, self.hamiltonian,
-                                                                                         self.system, state_index, self.options)
+                                                                                         self.system, state_index, self.options,
+                                                                                         fock=(self.fock if method.lower() in ["eomcc2", "eomcc2-relin"] else None))
             for j, istate in enumerate(state_index):
                 # Compute r0 a posteriori
                 self.r0[istate] = get_r0(self.R[istate], self.hamiltonian, self.vertical_excitation_energy[istate])
