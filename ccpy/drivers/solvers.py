@@ -410,9 +410,13 @@ def eomcc_block_davidson(HR, update_r, B0, R, dR, omega, T, H, system, state_ind
         dR.unflatten(dR.flatten() * 0.0)
         if t3_excitations or r3_excitations:
             sigma[:, j] = HR(dR, R[istate], T, H, options["RHF_symmetry"], system, t3_excitations, r3_excitations)
+        elif options["relin_omega_fixed"] is not None:
+            sigma[:, j] = HR(
+                dR, R[istate], T, H, fock, options["RHF_symmetry"], system,
+                options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"]
+            )
         elif fock is not None:
-            sigma[:, j] = HR(dR, R[istate], T, H, fock, options["RHF_symmetry"], system,
-                             options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"]) 
+            sigma[:, j] = HR(dR, R[istate], T, H, fock, options["RHF_symmetry"], system)
         else:
             sigma[:, j] = HR(dR, R[istate], T, H, options["RHF_symmetry"], system)
         num_add += 1
@@ -467,9 +471,11 @@ def eomcc_block_davidson(HR, update_r, B0, R, dR, omega, T, H, system, state_ind
                 # update the residual vector
                 if t3_excitations or r3_excitations:
                     R[istate] = update_r(R[istate], omega[istate], H, options["RHF_symmetry"], system, r3_excitations)
-                elif fock is not None:
+                elif options["relin_omega_fixed"] is not None:
                     R[istate] = update_r(R[istate], omega[istate], H, fock, options["RHF_symmetry"], system,
                                          options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"]) 
+                elif fock is not None:
+                    R[istate] = update_r(R[istate], omega[istate], H, fock, options["RHF_symmetry"], system) 
                 else:
                     R[istate] = update_r(R[istate], omega[istate], H, options["RHF_symmetry"], system)
                 q = R[istate].flatten()
@@ -481,9 +487,11 @@ def eomcc_block_davidson(HR, update_r, B0, R, dR, omega, T, H, system, state_ind
                 B[:, curr_size + num_add] = q
                 if t3_excitations or r3_excitations:
                     sigma[:, curr_size + num_add] = HR(dR, R[istate], T, H, options["RHF_symmetry"], system, t3_excitations, r3_excitations)
-                elif fock is not None:
+                elif options["relin_omega_fixed"] is not None:
                     sigma[:, curr_size + num_add] = HR(dR, R[istate], T, H, fock, options["RHF_symmetry"], system,
                                                        options["relin_omega_fixed"], options["relin_o_act_idx"], options["relin_v_act_idx"]) 
+                elif fock is not None:
+                    sigma[:, curr_size + num_add] = HR(dR, R[istate], T, H, fock, options["RHF_symmetry"], system) 
                 else:
                     sigma[:, curr_size + num_add] = HR(dR, R[istate], T, H, options["RHF_symmetry"], system)
                 num_add += 1

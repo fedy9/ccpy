@@ -679,7 +679,9 @@ class Driver:
                                                                                      self.T, self.hamiltonian,
                                                                                      self.system, state_index, self.options,
                                                                                      t3_excitations=t3_excitations,
-                                                                                     r3_excitations=r3_excitations)
+                                                                                     r3_excitations=r3_excitations,
+                                                                                     fock=(self.fock if method.lower() in
+                                                                                        ["eomcc2", "eomcc2-relin"] else None))
         for j, istate in enumerate(state_index):
             # Compute r0 a posteriori
             self.r0[istate] = get_r0(self.R[istate], self.hamiltonian, self.vertical_excitation_energy[istate])
@@ -689,6 +691,40 @@ class Driver:
                                       self.r0[istate], self.relative_excitation_level[istate], is_converged[j], istate, self.system,
                                       self.options["amp_print_threshold"])
         print("   Multiroot EOMCC(P) calculation ended on", get_timestamp(), "\n")
+
+    def _setup_relin_window(self, relin_cutoff, omega_fixed, guess_energy_ref):
+        """Determine the omega_fixed value and the active-space window
+        (o_act_idx, v_act_idx) for a relinearized EOM-CC2 calculation.
+
+        `relin_cutoff` is interpreted *relative* to max(omega_fixed, guess_energy_ref):
+        it is how far above that energy scale a double excitation's raw
+        orbital-energy gap may lie and still be kept in the explicit active space.
+        If omega_fixed is None, it defaults to guess_energy_ref. If no orbital pair
+        satisfies the active-space criterion (cutoff smaller than the smallest
+        available gap), the returned window is simply empty (no orbital active)
+        rather than raising.
+        """
+        if omega_fixed is None:
+            omega_fixed = guess_energy_ref
+            print(f"   Set omega_fixed = {omega_fixed:.4f} a.u. from the guess energy.")
+
+        energy_scale = max(omega_fixed, guess_energy_ref)
+        absolute_cutoff = relin_cutoff + energy_scale
+
+        # Determine active doubles configurations by simple orbital energies, assumes a restricted reference
+        o_where = np.where(np.diagonal(self.fock.a.vv[0, 0] - self.fock.a.oo) < absolute_cutoff)[0]
+        o_act_idx = o_where[0] if o_where.size > 0 else self.system.noccupied_alpha
+
+        v_where = np.where(np.diagonal(self.fock.a.vv - self.fock.a.oo[-1, -1]) < absolute_cutoff)[0]
+        v_act_idx = v_where[-1] if v_where.size > 0 else -1
+
+        total_configs = self.system.noccupied_alpha**2 * self.system.nunoccupied_alpha**2
+        active_configs = (self.system.noccupied_alpha - o_act_idx)**2 * (v_act_idx + 1)**2
+        print(f"   Relinearized cutoff = {relin_cutoff*27.2114:.2f} eV above "
+              f"max(omega_fixed, guess energy) = {energy_scale:.4f} a.u.")
+        print(f"   Only {active_configs/total_configs*100:.2f}% of doubles configurations are considered.")
+
+        return omega_fixed, o_act_idx, v_act_idx
 
     def run_eomcc(self, method, state_index, relin_cutoff=None, omega_fixed=None):
         """Performs the EOMCC calculation specified by the user in the input."""
@@ -705,27 +741,6 @@ class Driver:
         # excitation rank makes the eigenvalue problem nonlinear in omega
         if method.lower() in ["eomcc3", "eomcc2_nlin"]:
             self.options["davidson_solver"] = "diis"
-
-        # If running relinearized EOM-CC2, determine prerequisites
-        if method.lower() == "eomcc2-relin":
-            # Convert to au
-            print(f"Chosen relinearized cutoff in eV: {relin_cutoff*27.2114:.2f}")
-
-            # Determine active doubles configurations by simple orbital energies, assumes a restricted reference
-            self.options["relin_o_act_idx"] = np.where(np.diagonal(self.fock.a.vv[0, 0] - self.fock.a.oo) < relin_cutoff)[0][0]
-            self.options["relin_v_act_idx"] = np.where(np.diagonal(self.fock.a.vv - self.fock.a.oo[-1, -1]) < relin_cutoff)[0][-1]
-
-            total_configs = self.system.noccupied_alpha**2 * self.system.nunoccupied_alpha**2
-            active_configs = (
-                (self.system.noccupied_alpha-self.options["relin_o_act_idx"])**2 * self.options["relin_v_act_idx"]**2
-            )
-            print(f"Only {active_configs/total_configs*100:.2f}% of doubles configurations are considered.")
-
-            # Fix omega for Davidson 
-            if omega_fixed is None:
-                # Take the average of the guesses
-                omega_fixed = np.mean(self.guess_energy)
-            self.options["relin_omega_fixed"] = omega_fixed
 
         # Ensure that Hbar is set upon entry
         assert(self.flag_hbar)
@@ -755,6 +770,14 @@ class Driver:
 
         if self.options["davidson_solver"] == "multiroot":
             print("   Multiroot EOMCC calculation started on", get_timestamp(), "\n")
+            if method.lower() == "eomcc2-relin":
+                # A single active-space window and omega_fixed are shared by all roots
+                # solved simultaneously here, so scale the window to the highest-energy
+                # root actually being requested (not the whole guess pool).
+                guess_energy_ref = max(self.guess_energy[np.asarray(state_index) - 1])
+                (self.options["relin_omega_fixed"],
+                 self.options["relin_o_act_idx"],
+                 self.options["relin_v_act_idx"]) = self._setup_relin_window(relin_cutoff, omega_fixed, guess_energy_ref)
             # Form the initial subspace vectors
             B0, _ = np.linalg.qr(np.asarray([self.R[i].flatten() for i in state_index]).T)
             print("   Energy of initial guess")
@@ -766,7 +789,8 @@ class Driver:
                                                                                          self.vertical_excitation_energy,
                                                                                          self.T, self.hamiltonian,
                                                                                          self.system, state_index, self.options,
-                                                                                         fock=(self.fock if method.lower() in ["eomcc2", "eomcc2-relin"] else None))
+                                                                                         fock=(self.fock if method.lower() in
+                                                                                            ["eomcc2", "eomcc2-relin"] else None))
             for j, istate in enumerate(state_index):
                 # Compute r0 a posteriori
                 self.r0[istate] = get_r0(self.R[istate], self.hamiltonian, self.vertical_excitation_energy[istate])
@@ -804,6 +828,12 @@ class Driver:
                     B = np.hstack((self.R[istate].flatten()[:, np.newaxis] / np.linalg.norm(self.R[istate].flatten()), np.asarray(B_prev).T))
                 else:
                     B = self.R[istate].flatten()[:, np.newaxis] / np.linalg.norm(self.R[istate].flatten())
+                if method.lower() == "eomcc2-relin":
+                    # Each root is solved independently here, so give each its own
+                    # active-space window instead of sharing one across all roots.
+                    (self.options["relin_omega_fixed"],
+                     self.options["relin_o_act_idx"],
+                     self.options["relin_v_act_idx"]) = self._setup_relin_window(relin_cutoff, omega_fixed, self.guess_energy[istate - 1])
                 self.R[istate], self.vertical_excitation_energy[istate], is_converged = eomcc_davidson(HR_function, update_function,
                                                                                                        B,
                                                                                                        self.R[istate], dR, self.vertical_excitation_energy[istate],
