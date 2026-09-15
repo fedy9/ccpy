@@ -708,6 +708,10 @@ class Driver:
             omega_fixed = guess_energy_ref
             print(f"   Set omega_fixed = {omega_fixed:.4f} a.u. from the guess energy.")
 
+        if relin_cutoff is None:
+            # Choose 1 a.u. as default relative cutoff
+            relin_cutoff = 1.0
+
         energy_scale = max(omega_fixed, guess_energy_ref)
         absolute_cutoff = relin_cutoff + energy_scale
 
