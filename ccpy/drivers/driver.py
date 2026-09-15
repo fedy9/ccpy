@@ -74,7 +74,7 @@ class Driver:
         max_number_states : int
         """
         # Print the commit ID
-        self.print_commit_id()
+        # self.print_commit_id()
         #
         self.system = system
         self.hamiltonian = hamiltonian
